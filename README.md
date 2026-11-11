@@ -1,79 +1,28 @@
-# rn-spm-lookup-not-retried
+# SwiftPM artifact setup gives up on the first dropped connection to a version lookup
 
-![Build](https://github.com/YevheniiKotyrlo/rn-spm-lookup-not-retried/workflows/Pre%20Merge%20Checks/badge.svg)
+This is the reproducer template with `react-native` and every `@react-native/*` package at
+`0.90.0-nightly-20261111-1273ca128` and `@react-native-community/cli` at `21.0.0-alpha.1`, as the current community
+template sets the nightly up, plus two files:
 
-This is your new React Native Reproducer project.
+- `drop-first-lookup.mjs`, loaded with `node --import`, fails the first request to each version lookup the setup makes
+  (`registry.npmjs.org/<package>/nightly`, `registry.npmjs.org/hermes-compiler/latest-v1` and each
+  `maven-metadata.xml`) with the `TypeError: fetch failed` a reset connection gives, passes every other request
+  through, and answers each xcframework download with 404 so the run ends before downloading.
+- `repro.sh` installs the app, runs `node_modules/react-native/scripts/spm/download-spm-artifacts.js --version nightly`
+  under that preload, and exits 1 while the setup gives up with `fetch failed`, 0 once it recovers from each dropped
+  connection, and 2 when a step fails another way.
 
-# Reproducer TODO list
-
-- [x] 1. Create a new reproducer project.
-- [ ] 2. Git clone your repository locally.
-- [ ] 3. Edit the project to reproduce the failure you're seeing.
-- [ ] 4. Push your changes, so that Github Actions can run the CI.
-- [ ] 5. Make sure the repository is public and share the link with the issue you reported.
-
-# How to use this Reproducer
-
-This project has been created with `npx @react-native-community/cli init` and is a vanilla React Native app.
-
-> [!IMPORTANT]  
-> Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/set-up-your-environment) so that you have a working environment locally.
-
-## Step 1: Start the Metro Server
-
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
-
-```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+```sh
+bash repro.sh
 ```
 
-## Step 2: Start your Application
+Expected: the setup sends each lookup again, as `download()` does for the downloads since
+[#59214](https://github.com/react/react-native/pull/59214). Seen, on Node 26.12.1:
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
-
-```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```text
+[download-spm-artifacts]   Resolving nightly version from npm: react-native
+[drop-first-lookup] attempt 1: https://registry.npmjs.org/react-native/nightly
+fetch failed
+download-spm-artifacts.js exited 1
+RESULT: the setup exited 1 with "fetch failed" after one dropped connection to: https://registry.npmjs.org/react-native/nightly
 ```
-
-### For iOS
-
-First, make sure you install dependencies with:
-
-```bash
-cd ios && bundle install && bundle exec pod install
-```
-
-Then you can run the iOS app with:
-
-```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
-
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
-
-## Step 3: Modifying your App
-
-Now that you have successfully run the app, let's modify it.
-
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
-
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
